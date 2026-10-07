@@ -1,28 +1,17 @@
-# Homework 5：遞迴、迭代與函數式程式設計
+# Homework 5：程式碼介紹
 
-本作業使用 opencode 製作。
-
-這個資料夾共包含四個 Python 程式，分別示範**河內塔**（遞迴與迭代兩種寫法）、**函數式程式設計**（自行實作 `map` / `filter` / `reduce` 與泡泡排序），以及**符號微分**（以遞迴對數學運算式求導）。
+本文件由 opencode 製作，用來介紹本資料夾中四個 Python 檔案的程式碼。
 
 ---
 
-## 檔案總覽
+## 1. `hanoi_recursive.py` — 河內塔（遞迴版）
 
-| 檔案 | 主題 | 核心概念 |
-| :--- | :--- | :--- |
-| `hanoi_recursive.py` | 河內塔（遞迴版） | 分治法、遞迴 |
-| `hanoi_iterative.py` | 河內塔（迭代版） | 以堆疊取代遞迴 |
-| `map_filter_reduce_bubble.py` | 函數式工具 | `map` / `filter` / `reduce`、泡泡排序 |
-| `sym_diff_recursive.py` | 符號微分 | 樹狀結構遞迴、數學求導 |
-
----
-
-## 一、`hanoi_recursive.py` — 河內塔（遞迴版）
-
-以經典的**遞迴**方式解河內塔：要將 $n$ 個盤子從 `source` 搬到 `destination`，先將上面 $n-1$ 個搬到輔助柱，移動最大的盤子，再把 $n-1$ 個搬回。
+用**遞迴**解河內塔。核心函式 `hanoi`：
 
 ```python
 def hanoi(n, source, auxiliary, destination, moves=None):
+    if moves is None:
+        moves = []
     if n == 1:
         moves.append((source, destination))
         return moves
@@ -32,10 +21,20 @@ def hanoi(n, source, auxiliary, destination, moves=None):
     return moves
 ```
 
-- `solve(n)`：以 `A`、`B`、`C` 三根柱子呼叫 `hanoi`。
-- `print_moves(moves)`：逐行印出每一步與總步數（$2^n - 1$ 步）。
+**程式碼說明：**
 
-執行方式：
+- `moves=None`：預設參數，第一次呼叫時建立空串列 `moves` 來收集每一步移動，之後遞迴共用同一個串列（可變物件）。
+- **基底情況** `n == 1`：只有一個盤子，直接從 `source` 移到 `destination`，記錄 `(source, destination)` 後回傳。
+- **遞迴步驟**：
+  1. `hanoi(n-1, source, destination, auxiliary, moves)`：先把上面 $n-1$ 個盤子搬到輔助柱（`auxiliary`），此時 `destination` 當輔助柱。
+  2. `moves.append((source, destination))`：把最大的盤子從 `source` 移到 `destination`。
+  3. `hanoi(n-1, auxiliary, source, destination, moves)`：再把那 $n-1$ 個盤子從輔助柱搬到 `destination`。
+
+**其餘函式：**
+
+- `solve(n)`：以三根柱子 `'A'`、`'B'`、`'C'` 呼叫 `hanoi`，回傳移動清單。
+- `print_moves(moves)`：用 `enumerate(moves, 1)` 逐行印出「編號. 來源 -> 目標」，最後印出總步數 `len(moves)`。
+- `__main__` 區塊：從命令列參數讀取盤子數 `n`（`sys.argv[1]`），沒給則預設 `3`。
 
 ```bash
 python hanoi_recursive.py 3
@@ -43,95 +42,213 @@ python hanoi_recursive.py 3
 
 ---
 
-## 二、`hanoi_iterative.py` — 河內塔（迭代版）
+## 2. `hanoi_iterative.py` — 河內塔（迭代版）
 
-同樣解河內塔，但**不使用遞迴**，改用一個**堆疊（stack）**模擬遞迴的呼叫過程。每次取出一個 `(num, src, aux, dst)` 任務，若 `num == 1` 就直接移動，否則把「拆解後的三個子任務」依相反順序推回堆疊，確保執行順序與遞迴版一致。
+同樣解河內塔，但**不用遞迴**，改用**堆疊 `stack`** 模擬遞迴的呼叫堆疊。
 
 ```python
-stack = [(n, source, auxiliary, destination)]
-while stack:
-    num, src, aux, dst = stack.pop()
-    if num == 1:
-        moves.append((src, dst))
-        continue
-    stack.append((num - 1, aux, src, dst))
-    stack.append((1, src, aux, dst))
-    stack.append((num - 1, src, dst, aux))
+def hanoi_iterative(n, source, auxiliary, destination):
+    moves = []
+    if n < 1:
+        return moves
+    stack = [(n, source, auxiliary, destination)]
+    while stack:
+        num, src, aux, dst = stack.pop()
+        if num == 1:
+            moves.append((src, dst))
+            continue
+        stack.append((num - 1, aux, src, dst))
+        stack.append((1, src, aux, dst))
+        stack.append((num - 1, src, dst, aux))
+    return moves
 ```
 
-執行方式：
+**程式碼說明：**
 
-```bash
-python hanoi_iterative.py 3
-```
+- `n < 1`：盤子數小於 1 時直接回傳空的 `moves`。
+- `stack` 初始放入一個任務 `(n, source, auxiliary, destination)`。
+- `stack.pop()`：取出最上層任務 `(num, src, aux, dst)`。
+- **`num == 1`**：只需移動一個盤子，記錄 `(src, dst)` 並 `continue`。
+- **拆解任務**：把大任務拆成三個子任務，**依相反順序**推回堆疊，這樣 `pop()` 時執行順序才會與遞迴版一致：
+  1. `(num-1, aux, src, dst)`：最後才做（先推入，後執行）。
+  2. `(1, src, aux, dst)`：中間把最大盤子移過去。
+  3. `(num-1, src, dst, aux)`：最先做（後推入，先執行）。
 
-兩個河內塔檔案的輸出完全相同，可互相驗證結果是否正確。
+**其餘函式：** `solve(n)`、`print_moves(moves)`、`__main__` 皆與遞迴版相同，因此兩者輸出完全一致，可互相驗證。
 
 ---
 
-## 三、`map_filter_reduce_bubble.py` — 函數式程式設計
+## 3. `map_filter_reduce_bubble.py` — 函數式程式設計
 
-這個檔案用**遞迴**自行實作了 Python 內建的 `map` / `filter` / `reduce`，並用遞迴實作泡泡排序。
+用**遞迴**自行實作 `map` / `filter` / `reduce`，並用遞迴寫泡泡排序。
 
-### 自行實作的三個函式
+### `my_map(func, lst)`
 
-| 函式 | 功能 | 說明 |
+```python
+def my_map(func, lst):
+    if not lst:
+        return []
+    head = lst[0]
+    tail = lst[1:]
+    return [func(head)] + my_map(func, tail)
+```
+
+- 空串列回傳 `[]`（基底情況）。
+- 否則把串列拆成「頭 `head`」與「尾 `tail`」，對 `head` 套用 `func`，再遞迴處理 `tail`，最後用 `+` 串接。
+
+### `my_filter(func, lst)`
+
+```python
+def my_filter(func, lst):
+    if not lst:
+        return []
+    head = lst[0]
+    tail = lst[1:]
+    if func(head):
+        return [head] + my_filter(func, tail)
+    return my_filter(func, tail)
+```
+
+- 與 `my_map` 類似，但會先判斷 `func(head)`：
+  - 為真 → 保留 `head` 並遞迴。
+  - 為假 → 丟掉 `head`，只遞迴處理 `tail`。
+
+### `my_reduce(func, lst, initializer=None)`
+
+```python
+def my_reduce(func, lst, initializer=None):
+    if not lst:
+        if initializer is None:
+            raise TypeError("reduce() of empty sequence with no initial value")
+        return initializer
+    if initializer is None:
+        head = lst[0]
+        tail = lst[1:]
+        return my_reduce(func, tail, head)
+    head = lst[0]
+    tail = lst[1:]
+    return my_reduce(func, tail, func(initializer, head))
+```
+
+- 空串列：有 `initializer` 就回傳它；否則拋出 `TypeError`。
+- 沒有 `initializer` 時，先取第一個元素 `head` 當作初始累加值，再遞迴處理剩下的 `tail`。
+- 有 `initializer` 時，每次用 `func(initializer, head)` 合併頭元素，遞迴直到串列耗盡。
+
+### 泡泡排序
+
+```python
+def _bubble_pass(arr, index=0):
+    if index >= len(arr) - 1:
+        return arr
+    if arr[index] > arr[index + 1]:
+        new_arr = list(arr)
+        new_arr[index], new_arr[index + 1] = new_arr[index + 1], new_arr[index]
+        return _bubble_pass(new_arr, index + 1)
+    return _bubble_pass(arr, index + 1)
+
+def bubble_sort(arr):
+    data = list(arr)
+    n = len(data)
+    def _sort(lst, count):
+        if count <= 1:
+            return lst
+        lst_after_pass = _bubble_pass(lst)
+        return _sort(lst_after_pass, count - 1)
+    return _sort(data, n)
+```
+
+- `_bubble_pass`：一趟掃描，從 `index` 開始比較相鄰兩元素；若前者較大就**複製串列**後交換，再往右繼續。
+- `bubble_sort`：先複製輸入（不改到原串列），用內部的 `_sort` 重複執行 `_bubble_pass`，共 `n - 1` 趟。
+
+`__main__` 區塊示範了排序，以及用 `lambda` 搭配 `map`（乘 2）、`filter`（取偶數）、`reduce`（求和、求積）。
+
+---
+
+## 4. `sym_diff_recursive.py` — 符號微分（遞迴）
+
+對以 **tuple 運算式樹**表示的數學式做**遞迴求導**。
+
+### 輔助判斷函式
+
+```python
+def is_number(e):
+    return isinstance(e, (int, float)) and not isinstance(e, bool)
+
+def is_var(e):
+    return e == 'x'
+```
+
+- `is_number`：判斷是否為數值（並排除 `bool`，因為 `True/False` 也是 `int`）。
+- `is_var`：判斷是否為變數 `'x'`。
+
+### `sym_diff(expr)` — 求導主函式
+
+```python
+def sym_diff(expr):
+    if is_number(expr):
+        return 0
+    if is_var(expr):
+        return 1
+    if not isinstance(expr, tuple):
+        raise ValueError(f"Unsupported expression type: {expr}")
+    op = expr[0]
+    ...
+```
+
+- **常數** → 導數為 `0`。
+- **變數 `x`** → 導數為 `1`。
+- 其他非 tuple 就丟出 `ValueError`。
+- 依照運算子 `op = expr[0]` 分派到對應的微分法則：
+
+| 運算子 | 法則 | 程式碼 |
 | :--- | :--- | :--- |
-| `my_map(func, lst)` | 對串列每個元素套用函式 | 取頭、算結果、遞迴處理尾端 |
-| `my_filter(func, lst)` | 保留使函式為真的元素 | 依判斷決定是否保留頭元素 |
-| `my_reduce(func, lst, initializer)` | 將串列化簡為單一值 | 支援有無初始值兩種情況；空串列且無初始值時拋出 `TypeError` |
+| `+` / `-` | 逐項微分 | `('+', du, dv)` / `('-', du, dv)` |
+| `*` | 乘積法則 | `('+', ('*', du, v), ('*', u, dv))` |
+| `/` | 商法則 | 分子 `du*v - u*dv`，分母 `v^2` |
+| `^` / `**` | 冪次法則 | 次方為常數：`n * u^(n-1) * du`；否則用一般式 `u^n * (n/u*du + ln(u)*dn)` |
+| `neg` | 負號 | `('neg', sym_diff(u))` |
+| `sin` / `cos` / `tan` | 三角微分 | `cos(u)*du`、`-sin(u)*du`、`du / cos(u)^2` |
+| `exp` / `ln` / `sqrt` | 指對數與根號 | `exp(u)*du`、`du/u`、`du / (2*sqrt(u))` |
 
-### 泡泡排序（遞迴版）
+每個分支都遵循**連鎖律**：先算內層 `du = sym_diff(u)`，再乘上外層導數。遇到不支援的運算子則 `raise ValueError`。
 
-- `_bubble_pass(arr, index)`：完成一趟掃描，將相鄰較大的元素往後交換。
-- `bubble_sort(arr)`：重複執行 `n - 1` 趟掃描，直到排序完成。
+### `_prec(op)` — 運算子優先序
 
-執行方式：
-
-```bash
-python map_filter_reduce_bubble.py
+```python
+def _prec(op):
+    if op == 'neg': return 5
+    if op in ('^', '**'): return 4
+    if op == '*' or op == '/': return 3
+    if op == '+' or op == '-': return 2
+    return 0
 ```
 
-範例輸出包含 `Map (*2)`、`Filter (even)`、`Reduce (sum)`、`Reduce (*)` 等結果。
+用來判斷輸出字串時是否需要補括號（數字越大優先序越高）。
 
----
+### `expr_to_str(expr)` — 樹轉字串
 
-## 四、`sym_diff_recursive.py` — 符號微分（遞迴）
+- 數值：若為整數值的浮點數（如 `2.0`）就轉成 `2`。
+- `neg`：若子表達式優先序不低於 `neg`，外面要加括號，例如 `-(...)`。
+- 單元運算（`len==2`，如 `sin`）：輸出 `op(...)`。
+- 二元運算（`len==3`）：
+  - `^`：右運算元是 tuple 要括號；左運算元優先序不夠時也要括號。
+  - `* / + -`：子運算元優先序低於目前運算子時，用括號包起來，避免改變計算順序。
 
-以**運算式樹（expression tree）**表示數學式，並用**遞迴**對其求導。程式支援基本的微分法則：
+### `sym_diff_str(expr)`
 
-- **加減法**：`('+', u, v)`、`('-', u, v)`
-- **乘法**：乘積法則（product rule）
-- **除法**：商法則（quotient rule）
-- **次方**：冪次法則與一般式 $\frac{d}{dx}u^n$
-- **函式**：`sin`、`cos`、`tan`、`exp`、`ln`、`sqrt`、`neg`（負號）
+```python
+def sym_diff_str(expr):
+    return expr_to_str(sym_diff(expr))
+```
 
-運算式以 tuple 表示，例如 $x^2$ 寫成 `('^', 'x', 2)`，$\sin(x)\cos(x)$ 寫成 `('*', ('sin', 'x'), ('cos', 'x'))`。
+先 `sym_diff` 求導，再用 `expr_to_str` 轉成字串。
 
-### 主要函式
-
-| 函式 | 功能 |
-| :--- | :--- |
-| `sym_diff(expr)` | 對運算式樹求導，回傳新的運算式樹 |
-| `expr_to_str(expr)` | 將運算式樹轉回可讀字串（會依優先序自動加括號） |
-| `sym_diff_str(expr)` | 求導後直接輸出成字串 |
-
-執行方式：
+`__main__` 區塊對多組範例（`x^2`、`x^3`、`x*5`、`sin(x)*cos(x)`、`sin(x^2)`、`ln(x)`、`exp(x)`、`sin(x)/x`、`sqrt(x)` 等）印出 `d/dx ... = ...` 的結果。
 
 ```bash
 python sym_diff_recursive.py
 ```
 
-程式會對多組範例（如 $x^2$、$\sin(x^2)$、$\ln x$、$\sqrt{x}$、$\frac{\sin x}{x}$ 等）印出 `d/dx ... = ...` 的微分結果。
-
 ---
-
-## 總結
-
-這四個檔案分別從不同角度展示「重複」與「分解」兩種核心思維：
-
-- **河內塔**示範同一問題的遞迴解與迭代解（以堆疊模擬呼叫堆疊）。
-- **函數式工具**示範如何用遞迴取代迴圈來處理串列運算。
-- **符號微分**示範如何對樹狀結構做遞迴，將數學法則轉換為程式邏輯。
 
 > 本 README 由 opencode 撰寫。
