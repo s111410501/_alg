@@ -1,7 +1,8 @@
 ﻿# Homework 6：Lambda Calculus 解譯器
 
-本文件由 opencode 製作，用來介紹本資料夾中的 Lambda Calculus（λ-演算）解譯器。
+本文件由 opencode及gemini製作，用來介紹本資料夾中的 Lambda Calculus（λ-演算）解譯器。
 
+#### gemini對話網址 <https://share.gemini.google/KVShhyksKzC9>
 ---
 
 ## 1. `01-lambda/lambda_calculus.py` — λ-演算解譯器（有名稱版本）
