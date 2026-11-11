@@ -14,6 +14,3 @@
 9          | 搜尋算法 | 是 |  |  [09](https://github.com/s111410501/_alg/tree/main/homework/09) | 
 
 [請假證明](https://github.com/s111410501/_alg/blob/main/%E8%AB%8B%E5%81%87%E8%AD%89%E6%98%8E.png) 
-
-
-[請假證明](https://github.com/s111410501/_co/blob/main/%E8%AB%8B%E5%81%87%E8%AD%89%E6%98%8E.png)
